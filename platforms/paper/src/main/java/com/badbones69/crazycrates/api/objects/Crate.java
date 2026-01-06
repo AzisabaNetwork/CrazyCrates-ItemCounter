@@ -9,7 +9,7 @@ import com.badbones69.crazycrates.enums.types.CrateType;
 import com.badbones69.crazycrates.listeners.PreviewListener;
 import com.badbones69.crazycrates.objects.CrateHologram;
 import com.google.common.collect.Lists;
-import de.tr7zw.changeme.nbtapi.NBTItem;
+import de.tr7zw.nbtapi.NBTItem;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -70,9 +70,9 @@ public class Crate {
         this.keyNoNBT = itemBuilder.build();
         this.key = itemBuilder.setCrateName(name).build();
         this.adminKey = itemBuilder
-                .addLore("")
-                .addLore("&7&l(&6&l!&7&l) Left click for Physical Key")
-                .addLore("&7&l(&6&l!&7&l) Right click for Virtual Key")
+                //.addLore("")
+                //.addLore("&7&l(&6&l!&7&l) Left click for Physical Key")
+                //.addLore("&7&l(&6&l!&7&l) Right click for Virtual Key")
                 .setCrateName(name).build();
         this.file = file;
         this.name = name;
@@ -467,14 +467,30 @@ public class Crate {
 
     /**
      * Gets the inventory of a preview of prizes for the crate.
-     *
-     * @return The preview as an Inventory object.
      */
-    public Inventory getPreview(Player player, int page) {
-        Inventory inventory = player.getServer().createInventory(null, !borderToggle && (PreviewListener.playerInMenu(player) || maxPage > 1) && maxSlots == 9 ? maxSlots + 9 : maxSlots, previewName);
+    public org.bukkit.inventory.Inventory getPreview(org.bukkit.entity.Player player, int page) {
+        // 1. インベントリの作成（サイズ計算ロジックを維持）
+        int size = !borderToggle && (com.badbones69.crazycrates.listeners.PreviewListener.playerInMenu(player) || maxPage > 1) && maxSlots == 9 ? maxSlots + 9 : maxSlots;
+        org.bukkit.inventory.Inventory inventory = org.bukkit.Bukkit.createInventory(null, size, com.badbones69.crazycrates.Methods.sanitizeColor(previewName));
+
+        // 2. 枠やボタンの配置
         setDefaultItems(inventory, player);
 
-        for (ItemStack item : getPageItems(page)) {
+        // 3. 常に最新のカウントを表示するためにアイテムリストを生成
+        java.util.List<org.bukkit.inventory.ItemStack> latestPreview = new java.util.ArrayList<>();
+
+        // CrazyManagerを取得（アイテム生成ロジックを共通化するため）
+        com.badbones69.crazycrates.api.CrazyManager crazyManager = com.badbones69.crazycrates.CrazyCrates.getPlugin().getStarter().getCrazyManager();
+
+        for (Prize prize : getPrizes()) {
+            // 重要：既に作成済みの getDisplayItem(file, prizeName) を呼び出すことで、
+            // あなたが苦労して作った %count% 置換ロジックをそのまま利用します！
+            org.bukkit.inventory.ItemStack item = crazyManager.getDisplayItem(getFile(), prize.getName()).build();
+            latestPreview.add(item);
+        }
+
+        // 4. 配置（最新のアイテムリストを使ってページ表示）
+        for (org.bukkit.inventory.ItemStack item : getPageItems(page, latestPreview)) {
             int nextSlot = inventory.firstEmpty();
 
             if (nextSlot >= 0) {
@@ -691,41 +707,47 @@ public class Crate {
 
     /**
      * Loads all the preview items and puts them into a list.
-     *
+     * 修正点: プレビュー読み込み時に CountsManager を使って %count% を置換する
      * @return A list of all the preview items that were created.
      */
     private ArrayList<ItemStack> loadPreview() {
         ArrayList<ItemStack> items = new ArrayList<>();
 
         for (Prize prize : getPrizes()) {
-            items.add(prize.getDisplayItem());
+            ItemStack item = prize.getDisplayItem();
+
+            // --- [追加] プレビューアイテムのLoreにある %count% を置換 ---
+            if (item.hasItemMeta() && item.getItemMeta().hasLore()) {
+                org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+                // CountsManager を使って、このクレート(this.name)と賞(prize.getName())のカウントに置換
+                List<String> newLore = new ArrayList<>();
+                int currentCount = com.badbones69.crazycrates.api.CountsManager.getCount(this.name, prize.getName());
+
+                for (String line : meta.getLore()) {
+                    newLore.add(line.replace("%count%", String.valueOf(currentCount))
+                            .replace("%Count%", String.valueOf(currentCount)));
+                }
+                meta.setLore(newLore);
+                item.setItemMeta(meta);
+            }
+            // --------------------------------------------------
+
+            items.add(item);
         }
 
         return items;
     }
 
-    private List<ItemStack> getPageItems(int page) {
-        List<ItemStack> list = preview;
+    //オーバーロード
+    private List<ItemStack> getPageItems(int page, List<ItemStack> list) {
         List<ItemStack> items = new ArrayList<>();
-
         if (page <= 0) page = 1;
-
-        int max = maxSlots - (borderToggle ? 18 : maxSlots >= preview.size() ? 0 : maxSlots != 9 ? 9 : 0);
+        int max = maxSlots - (borderToggle ? 18 : maxSlots >= list.size() ? 0 : maxSlots != 9 ? 9 : 0);
         int index = page * max - max;
-        int endIndex = index >= list.size() ? list.size() - 1 : index + max;
+        int endIndex = Math.min(index + max, list.size());
 
         for (; index < endIndex; index++) {
-            if (index < list.size()) items.add(list.get(index));
-        }
-
-        for (; items.isEmpty(); page--) {
-            if (page <= 0) break;
-            index = page * max - max;
-            endIndex = index >= list.size() ? list.size() - 1 : index + max;
-
-            for (; index < endIndex; index++) {
-                if (index < list.size()) items.add(list.get(index));
-            }
+            items.add(list.get(index));
         }
         return items;
     }

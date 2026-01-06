@@ -1,46 +1,7 @@
-@file:Suppress("UnstableApiUsage")
+rootProject.name = "CrazyCrates"
 
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-    }
-}
+include(":crazycrates-api")
+project(":crazycrates-api").projectDir = file("api")
 
-val lowerCase = rootProject.name.lowercase()
-
-listOf("api").forEach(::includeProject)
-
-listOf("paper").forEach(::includePlatform)
-
-fun includeProject(name: String) {
-    include(name) {
-        this.name = "$lowerCase-$name"
-    }
-}
-
-fun includeModule(name: String) {
-    include(name) {
-        this.name = "$lowerCase-module-$name"
-        this.projectDir = file("modules/$name")
-    }
-}
-
-fun includePlatform(name: String) {
-    include(name) {
-        this.name = "$lowerCase-$name"
-        this.projectDir = file("platforms/$name")
-    }
-}
-
-fun includePlatformModule(name: String, platform: String) {
-    include(name) {
-        this.name = "$lowerCase-module-$platform-$name"
-        this.projectDir = file("modules/$platform/$name")
-    }
-}
-
-fun include(name: String, block: ProjectDescriptor.() -> Unit) {
-    include(name)
-    project(":$name").apply(block)
-}
+include(":crazycrates-paper")
+project(":crazycrates-paper").projectDir = file("platforms/paper")

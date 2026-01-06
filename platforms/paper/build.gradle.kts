@@ -4,48 +4,52 @@ plugins {
     id("crazycrates.paper-plugin")
 }
 
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
+
 repositories {
-    maven("https://nexus.phoenixdevt.fr/repository/maven-public/")
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://jitpack.io")
+    maven("https://repo.codemc.io/repository/maven-public/") // DecentHolograms, PlaceholderAPI
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // PlaceholderAPI
+    maven("https://nexus.phoenixdevt.fr/repository/maven-public/") // MMOItems
+    maven("https://repo.nexomc.com/repository/maven-public/") // ItemsAdder
 }
 
 dependencies {
-    api(project(":crazycrates-api"))
-
+    shadow(project(":crazycrates-api"))
     compileOnly(libs.papermc)
 
-    implementation(libs.nbt.api)
+    // 重要：フォルダ内のJARを強制的に読み込む
+    // 'libs' は build.gradle.kts と同じ階層にある前提です
+    compileOnly(fileTree("libs") { include("*.jar") })
 
-    compileOnly(libs.holographic.displays)
-    compileOnly(libs.decent.holograms)
-    compileOnly(fileTree("libs"))
+    // 万が一上の行でダメな場合のために、一階層上も見に行く設定
+    compileOnly(fileTree("../../libs") { include("*.jar") })
 
-    compileOnly(libs.placeholder.api)
-
-    compileOnly(libs.itemsadder.api)
-
-    compileOnly("io.lumine:MythicLib-dist:1.6.2-SNAPSHOT")
-    compileOnly("net.Indyuce:MMOItems-API:6.10-SNAPSHOT")
+    // 1.16.5用のAdventure
+    shadow("net.kyori:adventure-api:4.14.0")
 }
-
 tasks {
     shadowJar {
-        archiveFileName.set("${rootProject.name}+Paper+${rootProject.version}.jar")
+        archiveFileName.set("CrazyCrates-Paper.jar")
+        configurations = listOf(project.configurations.getByName("shadow"))
 
-        listOf(
-            "de.tr7zw.changeme.nbtapi",
-            "dev.triumphteam.cmd"
-        ).forEach { relocate(it, "${rootProject.group}.library.$it") }
+        // 以前のリロケートが残っているとマズいので一旦無効、または最小限に
+        mergeServiceFiles()
     }
 
     processResources {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
         from(sourceSets.main.get().resources.srcDirs) {
             expand(
-                "name" to rootProject.name,
-                "group" to rootProject.group,
-                "version" to rootProject.version,
-                "description" to rootProject.description,
-                "website" to "https://www.mcio.dev"
+                "name" to "CrazyCrates",
+                "group" to "com.badbones69.crazycrates",
+                "version" to "1.0.0",
+                "description" to "Crates Plugin",
+                "website" to "https://github.com/pino223-72/UltraCrazyCrates"
             )
             include("plugin.yml")
         }

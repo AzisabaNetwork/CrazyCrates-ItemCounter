@@ -1,13 +1,13 @@
 package com.badbones69.crazycrates.api.objects;
 
-import com.badbones69.crazycrates.MMO;
+
 import com.badbones69.crazycrates.support.AdventureUtil;
 import com.badbones69.crazycrates.support.SkullCreator;
 import com.badbones69.crazycrates.support.libraries.PluginSupport;
-import de.tr7zw.changeme.nbtapi.NBT;
-import de.tr7zw.changeme.nbtapi.NBTItem;
-import de.tr7zw.changeme.nbtapi.iface.ReadWriteNBT;
-import dev.lone.itemsadder.api.CustomStack;
+import de.tr7zw.nbtapi.NBT;
+import de.tr7zw.nbtapi.NBTItem;
+import de.tr7zw.nbtapi.iface.ReadWriteNBT;
+//import dev.lone.itemsadder.api.CustomStack;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
@@ -340,21 +340,24 @@ public class ItemBuilder {
 
         ItemStack item = referenceItem;
 
-        if (mmoType != null && mmoId != null) {
-            ItemStack mmoItem = MMO.getDisplayItem(mmoType, mmoId, this);
-            if (mmoItem != null) {
-                item = mmoItem;
-            }
+    /* MMOItemsの連携を解除
+    if (mmoType != null && mmoId != null) {
+        ItemStack mmoItem = MMO.getDisplayItem(mmoType, mmoId, this);
+        if (mmoItem != null) {
+            item = mmoItem;
         }
+    }
+    */
 
-        //If item is null, Check if the iaNamespace (material from config file) is a ItemsAdder CustomStack
-        //otherwise, normal behaviour
-        if (item == null && PluginSupport.ITEMS_ADDER.isPluginEnabled()) {
-            CustomStack customStack = CustomStack.getInstance(this.iaNamespace);
+    /* ItemsAdderの連携を解除
+    if (item == null && PluginSupport.ITEMS_ADDER.isPluginEnabled()) {
+        CustomStack customStack = CustomStack.getInstance(this.iaNamespace);
 
-            if (customStack != null) item = customStack.getItemStack();
-        }
+        if (customStack != null) item = customStack.getItemStack();
+    }
+    */
 
+        // アイテムがまだnullなら、設定されたMaterialから作成する
         if (item == null) item = new ItemStack(material);
 
         return item;
@@ -381,8 +384,9 @@ public class ItemBuilder {
             item.setAmount(itemAmount);
             ItemMeta itemMeta = item.getItemMeta();
             if (mmoType == null && mmoId == null) {
-                itemMeta.displayName(AdventureUtil.miniMessage(getUpdatedName()));
-                itemMeta.lore(AdventureUtil.miniMessage(getUpdatedLore()));
+                // 文字列を直接セット (1.16.5 方式)
+                itemMeta.setDisplayName(AdventureUtil.replaceLegacy(getUpdatedName()));
+                itemMeta.setLore(AdventureUtil.parseLore(getUpdatedLore()));
             }
 
             if (itemMeta instanceof org.bukkit.inventory.meta.Damageable)

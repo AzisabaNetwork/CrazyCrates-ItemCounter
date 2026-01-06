@@ -1,6 +1,6 @@
 package com.badbones69.crazycrates.api.objects;
 
-import de.tr7zw.changeme.nbtapi.NBTItem;
+import de.tr7zw.nbtapi.NBTItem;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -27,6 +27,9 @@ public class Prize {
     private final String specialPermission;
     private final List<String> specialMessages;
     private final List<String> specialCommands;
+
+    // 追加: 当選回数をカウントするかどうかのフラグ
+    private final boolean useCount;
 
     /**
      * Create a new prize.
@@ -55,6 +58,7 @@ public class Prize {
         this.specialPermission = null;
         this.specialMessages = new ArrayList<>();
         this.specialCommands = new ArrayList<>();
+        this.useCount = false; // デフォルトはfalse
     }
 
     /**
@@ -70,10 +74,11 @@ public class Prize {
      * @param blackListPermissions The list of black permissions that the prize has.
      * @param tiers                The tiers the prize is in.
      * @param altPrize             The alternative prize that is won if the player has a blacklist permission.
+     * @param useCount             Set if the prize count is tracked. (追加)
      */
     public Prize(String name, ItemBuilder displayItem, List<String> messages, List<String> commands,
                  List<ItemStack> items, List<ItemBuilder> itemBuilders, String crate, int chance, int bonusChance, int maxRange, boolean firework, List<String> blackListPermissions,
-                 List<Tier> tiers, Prize altPrize, String specialPermission, List<String> specialMessages, List<String> specialCommands) {
+                 List<Tier> tiers, Prize altPrize, String specialPermission, List<String> specialMessages, List<String> specialCommands, boolean useCount) {
         this.name = name != null ? name : "&4No name Found!";
         this.crate = crate;
         this.items = items != null ? items : new ArrayList<>();
@@ -92,6 +97,7 @@ public class Prize {
         this.specialPermission = specialPermission;
         this.specialMessages = specialMessages;
         this.specialCommands = specialCommands;
+        this.useCount = useCount; // 初期化
     }
 
     /**
@@ -190,8 +196,16 @@ public class Prize {
         return specialCommands;
     }
 
+    /**
+     * @return Returns true if the prize count should be tracked. (追加)
+     */
+    public boolean useCount() {
+        return useCount;
+    }
+
     public Prize bonus() {
-        return new Prize(name, displayItem, messages, commands, items, itemBuilders, crate, bonusChance, -1, maxRange, firework, blackListPermissions, tiers, altPrize, specialPermission, specialMessages, specialCommands);
+        // useCountを引継ぎ
+        return new Prize(name, displayItem, messages, commands, items, itemBuilders, crate, bonusChance, -1, maxRange, firework, blackListPermissions, tiers, altPrize, specialPermission, specialMessages, specialCommands, useCount);
     }
 
     /**

@@ -3,6 +3,7 @@ package com.badbones69.crazycrates;
 import com.badbones69.crazycrates.api.FileManager.Files;
 import com.badbones69.crazycrates.api.enums.settings.Messages;
 import com.badbones69.crazycrates.api.objects.CrateLocation;
+import com.badbones69.crazycrates.api.CountsManager;
 import com.badbones69.crazycrates.commands.subs.CrateBaseCommand;
 import com.badbones69.crazycrates.commands.subs.player.BaseKeyCommand;
 import com.badbones69.crazycrates.cratetypes.*;
@@ -15,7 +16,7 @@ import com.badbones69.crazycrates.support.AdventureUtil;
 import com.badbones69.crazycrates.support.libraries.PluginSupport;
 import com.badbones69.crazycrates.support.placeholders.PlaceholderAPISupport;
 import com.google.common.collect.Lists;
-import de.tr7zw.changeme.nbtapi.utils.MinecraftVersion;
+//import de.tr7zw.nbtapi.utils.MinecraftVersion;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -40,10 +41,10 @@ public class CrazyCrates extends JavaPlugin implements Listener {
 
     @Override
     public void onLoad() {
-        MinecraftVersion.replaceLogger(getLogger());
-        MinecraftVersion.disableUpdateCheck();
-        MinecraftVersion.disableBStats();
-        MinecraftVersion.getVersion();
+        //MinecraftVersion.replaceLogger(getLogger());
+        //MinecraftVersion.disableUpdateCheck();
+        //MinecraftVersion.disableBStats();
+        //MinecraftVersion.getVersion();
     }
 
     @Override
@@ -54,6 +55,8 @@ public class CrazyCrates extends JavaPlugin implements Listener {
         starter = new Starter();
 
         starter.run();
+
+        com.badbones69.crazycrates.api.CountsManager.init(getDataFolder());
 
         starter.getFileManager().setLog(true)
                 .registerDefaultGenerateFiles("CrateExample.yml", "/crates", "/crates")
@@ -67,6 +70,7 @@ public class CrazyCrates extends JavaPlugin implements Listener {
                 .registerDefaultGenerateFiles("wooden.nbt", "/schematics", "/schematics")
                 .registerCustomFilesFolder("/crates")
                 .registerCustomFilesFolder("/schematics")
+
                 .setup();
 
         // Clean files if we have to.
@@ -135,6 +139,9 @@ public class CrazyCrates extends JavaPlugin implements Listener {
             plugin.getLogger().warning("If you have any issues, Please contact Discord Support.");
             plugin.getLogger().warning("https://discord.gg/crazycrew");
             plugin.getLogger().warning("========================================================================");
+
+
+
         }
 
         enable();
@@ -187,7 +194,7 @@ public class CrazyCrates extends JavaPlugin implements Listener {
         pluginManager.registerEvents(this, this);
 
         if (PluginSupport.ITEMS_ADDER.isPluginEnabled()) {
-            getServer().getPluginManager().registerEvents(new ItemsAdderListener(), this);
+            //getServer().getPluginManager().registerEvents(new ItemsAdderListener(), this);
         } else {
             starter.getCrazyManager().loadCrates();
         }

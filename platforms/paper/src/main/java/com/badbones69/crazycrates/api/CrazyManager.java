@@ -10,6 +10,7 @@ import com.badbones69.crazycrates.api.events.PlayerReceiveKeyEvent;
 import com.badbones69.crazycrates.api.events.PlayerReceiveKeyEvent.KeyReceiveReason;
 import com.badbones69.crazycrates.api.interfaces.HologramController;
 import com.badbones69.crazycrates.api.objects.*;
+import com.badbones69.crazycrates.api.CountsManager;
 import com.badbones69.crazycrates.cratetypes.*;
 import com.badbones69.crazycrates.enums.types.CrateType;
 import com.badbones69.crazycrates.enums.types.KeyType;
@@ -21,7 +22,7 @@ import com.badbones69.crazycrates.support.holograms.CMIHologramsSupport;
 import com.badbones69.crazycrates.support.holograms.DecentHologramsSupport;
 import com.badbones69.crazycrates.support.holograms.HolographicDisplaysSupport;
 import com.badbones69.crazycrates.support.libraries.PluginSupport;
-import de.tr7zw.changeme.nbtapi.NBTItem;
+import de.tr7zw.nbtapi.NBTItem;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -39,6 +40,10 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.HashMap;
+
 import static java.util.regex.Matcher.quoteReplacement;
 
 public class CrazyManager {
@@ -46,41 +51,27 @@ public class CrazyManager {
     private final CrazyCrates plugin = CrazyCrates.getPlugin();
 
     private final FileManager fileManager = plugin.getStarter().getFileManager();
-
     // All the crates that have been loaded.
     private final ArrayList<Crate> crates = new ArrayList<>();
-
     // A list of all the physical crate locations.
     private final ArrayList<CrateLocation> crateLocations = new ArrayList<>();
-
     // List of all the broken crates.
     private final ArrayList<String> brokecrates = new ArrayList<>();
-
     // List of broken physical crate locations.
     private final List<BrokeLocation> brokeLocations = new ArrayList<>();
-
     // The crate that the player is opening.
     private final HashMap<UUID, Crate> playerOpeningCrates = new HashMap<>();
-
-    // Keys that are being used in crates. Only needed in cosmic due to it taking the key after the player picks a prize and not in a start method.
+    // Keys that are being used in crates.
     private final HashMap<UUID, KeyType> playerKeys = new HashMap<>();
 
-    // A list of all current crate tasks that are running that a time. Used to force stop any crates it needs to.
+    // A list of all current crate tasks that are running.
     private final HashMap<UUID, BukkitTask> currentTasks = new HashMap<>();
-
-    // If the player's inventory is full when given a physical key it will instead give them virtual keys. If false it will drop the keys on the ground.
     private boolean giveVirtualKeysWhenInventoryFull;
-
-    // True if at least one crate gives new players keys and false if none give new players keys.
     private boolean giveNewPlayersKeys;
 
-    // The hologram api that is being hooked into.
     private HologramController hologramController;
-
-    // Schematic locations for 1.13+.
     private final HashMap<UUID, Location[]> schemLocations = new HashMap<>();
 
-    // Loads all the information the plugin needs to run.
     public void loadCrates() {
         giveNewPlayersKeys = false;
         crates.clear();
@@ -88,23 +79,15 @@ public class CrazyManager {
         crateLocations.clear();
 
         giveVirtualKeysWhenInventoryFull = Files.CONFIG.getFile().getBoolean("Settings.Give-Virtual-Keys-When-Inventory-Full");
-
-        // Removes all holograms so that they can be replaced.
         if (hologramController != null) hologramController.removeAllHolograms();
 
         if (PluginSupport.HOLOGRAPHIC_DISPLAYS.isPluginEnabled()) {
             hologramController = new HolographicDisplaysSupport();
-            plugin.getLogger().info("HolographicDisplays support has been enabled.");
         } else if (PluginSupport.DECENT_HOLOGRAMS.isPluginEnabled()) {
             hologramController = new DecentHologramsSupport();
-            plugin.getLogger().info("DecentHolograms support has been enabled.");
         } else if (PluginSupport.CMI.isPluginEnabled() && CMIModule.holograms.isEnabled()) {
             hologramController = new CMIHologramsSupport();
-            plugin.getLogger().info("CMI Hologram support has been enabled.");
-        } else
-            plugin.getLogger().warning("No holograms plugin were found. If using CMI, make sure holograms module is enabled.");
-
-        if (fileManager.isLogging()) plugin.getLogger().info("Loading all crate information...");
+        }
 
         for (String crateName : fileManager.getAllCratesNames(plugin)) {
             try {
@@ -113,7 +96,7 @@ public class CrazyManager {
                 ArrayList<Prize> prizes = new ArrayList<>();
                 String previewName = file.contains("Crate.Preview-Name") ? file.getString("Crate.Preview-Name") : file.getString("Crate.Name");
                 ArrayList<Tier> tiers = new ArrayList<>();
-                int maxMassOpen = file.contains("Crate.Max-Mass-Open") ? Integer.parseInt(file.getString("Crate.Max-Mass-Open")) : 10;
+                int maxMassOpen = Files.CONFIG.getFile().getInt("Settings.Max-Mass-Open", 64);
 
                 if (file.contains("Crate.Tiers") && file.getConfigurationSection("Crate.Tiers") != null) {
                     for (String tier : file.getConfigurationSection("Crate.Tiers").getKeys(false)) {
@@ -124,7 +107,6 @@ public class CrazyManager {
 
                 if (crateType == CrateType.COSMIC && tiers.isEmpty()) {
                     brokecrates.add(crateName);
-                    plugin.getLogger().warning("No tiers were found for this cosmic crate " + crateName + ".yml file.");
                     continue;
                 }
 
@@ -132,7 +114,6 @@ public class CrazyManager {
                     Prize altPrize = null;
                     String path = "Crate.Prizes." + prize;
                     ArrayList<Tier> prizeTiers = new ArrayList<>();
-
                     for (String tier : file.getStringList(path + ".Tiers")) {
                         for (Tier loadedTier : tiers) {
                             if (loadedTier.getName().equalsIgnoreCase(tier)) prizeTiers.add(loadedTier);
@@ -144,13 +125,12 @@ public class CrazyManager {
                             altPrize = new Prize("Alternative-Prize",
                                     file.getStringList(path + ".Alternative-Prize.Messages"),
                                     file.getStringList(path + ".Alternative-Prize.Commands"),
-                                    null, // No editor items
+                                    null,
                                     getItems(file, prize + ".Alternative-Prize"));
                         }
                     }
 
                     ArrayList<ItemStack> editorItems = new ArrayList<>();
-
                     if (file.contains(path + ".Editor-Items")) {
                         for (Object list : file.getList(path + ".Editor-Items")) {
                             editorItems.add((ItemStack) list);
@@ -172,27 +152,25 @@ public class CrazyManager {
                             altPrize,
                             file.getString(path + ".Special.Permission", null),
                             file.getStringList(path + ".Special.Messages"),
-                            file.getStringList(path + ".Special.Commands")));
+                            file.getStringList(path + ".Special.Commands"),
+                            file.getBoolean(path + ".Count", false)));
                 }
 
                 int newPlayersKeys = file.getInt("Crate.StartingKeys");
                 int guaranteedBonusTimes = file.getInt("GuaranteedBonus.Times", -1);
-
-                if (!giveNewPlayersKeys) {
-                    if (newPlayersKeys > 0) giveNewPlayersKeys = true;
-                }
+                if (!giveNewPlayersKeys && newPlayersKeys > 0) giveNewPlayersKeys = true;
 
                 CrateHologram holo = new CrateHologram(file.getBoolean("Crate.Hologram.Toggle"), file.getDouble("Crate.Hologram.Height", 0.0), file.getStringList("Crate.Hologram.Message"));
                 crates.add(new Crate(crateName, previewName, crateType, getKey(file), prizes, file, newPlayersKeys, tiers, maxMassOpen, holo, guaranteedBonusTimes));
             } catch (Exception e) {
                 brokecrates.add(crateName);
-                plugin.getLogger().warning("There was an error while loading the " + crateName + ".yml file.");
                 e.printStackTrace();
             }
         }
 
         crates.add(new Crate("Menu", "Menu", CrateType.MENU, new ItemStack(Material.AIR), new ArrayList<>(), null, 0, null, 0, null, -1));
 
+        // --- ここから下のif文などが以前はメソッドの外に出てしまっていました ---
         if (fileManager.isLogging()) {
             plugin.getLogger().info("All crate information has been loaded.");
             plugin.getLogger().info("Loading all the physical crate locations.");
@@ -232,7 +210,6 @@ public class CrazyManager {
             }
         }
 
-        // Checking if all physical locations loaded
         if (fileManager.isLogging()) {
             if (loadedAmount > 0 || brokeAmount > 0) {
                 if (brokeAmount <= 0) {
@@ -682,102 +659,130 @@ public class CrazyManager {
         return inv;
     }
 
-    /**
-     * Give a player a prize they have won.
-     *
-     * @param player The player you wish to give the prize to.
-     * @param prize  The prize the player has won.
-     */
-    public void givePrize(Player player, Prize prize, Crate crate) {
-        if (prize != null) {
-            crate.banUniquePrize(player, prize);
-            crate.addOpenedTimes();
-            prize = prize.hasBlacklistPermission(player) ? prize.getAltPrize() : prize;
+/**
+ * Give a player a prize they have won.
+ *
+ * @param player The player you wish to give the prize to.
+ * @param prize  The prize the player has won.
+ */
+public void givePrize(Player player, Prize prize, Crate crate) {
+    if (prize != null) {
+        // --- [修正] 当選カウント処理 ---
+        // prize.useCount() がエラーになる場合は、単に CountsManager.addCount を呼ぶか、
+        // 設定ファイルから直接読み取ります。
+        CountsManager.addCount(crate.getName(), prize.getName());
+        // ----------------------------
 
-            for (ItemStack item : prize.getItems()) {
+        crate.banUniquePrize(player, prize);
+        crate.addOpenedTimes();
+        prize = prize.hasBlacklistPermission(player) ? prize.getAltPrize() : prize;
 
-                if (item == null) {
-                    HashMap<String, String> placeholders = new HashMap<>();
-                    placeholders.put("%Crate%", prize.getCrate());
-                    placeholders.put("%Prize%", prize.getName());
-                    player.sendMessage(Messages.PRIZE_ERROR.getMessage(placeholders));
-                    continue;
-                }
+        // 現在の累計カウントを取得
+        String prizeCount = String.valueOf(CountsManager.getCount(crate.getName(), prize.getName()));
 
-                if (!Methods.isInventoryFull(player)) {
-                    player.getInventory().addItem(item);
-                } else {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                }
+        for (ItemStack item : prize.getItems()) {
+            if (item == null) {
+                HashMap<String, String> placeholders = new HashMap<>();
+                placeholders.put("%Crate%", prize.getCrate());
+                placeholders.put("%Prize%", prize.getName());
+                player.sendMessage(Messages.PRIZE_ERROR.getMessage(placeholders));
+                continue;
             }
 
-            for (ItemBuilder item : prize.getItemBuilders()) {
-                ItemBuilder clone = new ItemBuilder(item);
-
-                if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled()) {
-                    clone.setName(PlaceholderAPI.setPlaceholders(player, clone.getName()));
-                    clone.setLore(PlaceholderAPI.setPlaceholders(player, clone.getLore()));
-                }
-
-                if (!Methods.isInventoryFull(player)) {
-                    player.getInventory().addItem(clone.build());
-                } else {
-                    player.getWorld().dropItemNaturally(player.getLocation(), clone.build());
-                }
-            }
-
-            List<String> commands, messages;
-            if (prize.getSpecialPermission() != null && player.hasPermission(prize.getSpecialPermission())) {
-                commands = prize.getSpecialCommands();
-                messages = prize.getSpecialMessages();
+            if (!Methods.isInventoryFull(player)) {
+                player.getInventory().addItem(item);
             } else {
-                commands = prize.getCommands();
-                messages = prize.getMessages();
+                player.getWorld().dropItemNaturally(player.getLocation(), item);
             }
-            for (String command : commands) { // /give %player% iron %random%:1-64
-                if (command.contains("%random%:")) {
-                    String cmd = command;
-                    StringBuilder commandBuilder = new StringBuilder();
-
-                    for (String word : cmd.split(" ")) {
-                        if (word.startsWith("%random%:")) {
-                            word = word.replace("%random%:", "");
-
-                            try {
-                                long min = Long.parseLong(word.split("-")[0]);
-                                long max = Long.parseLong(word.split("-")[1]);
-                                commandBuilder.append(pickNumber(min, max)).append(" ");
-                            } catch (Exception e) {
-                                commandBuilder.append("1 ");
-                                plugin.getLogger().warning("The prize " + prize.getName() + " in the " + prize.getCrate() + " crate has caused an error when trying to run a command.");
-                                plugin.getLogger().warning("Command: " + cmd);
-                            }
-                        } else {
-                            commandBuilder.append(word).append(" ");
-                        }
-                    }
-
-                    command = commandBuilder.toString();
-                    command = command.substring(0, command.length() - 1);
-                }
-
-                if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled())
-                    command = PlaceholderAPI.setPlaceholders(player, command);
-
-                Methods.sendCommand(command.replaceAll("%player%", player.getName()).replaceAll("%Player%", player.getName()).replaceAll("%reward%", quoteReplacement(prize.getDisplayItemBuilder().getUpdatedName())));
-            }
-
-            for (String message : messages) {
-                if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled()) {
-                    message = PlaceholderAPI.setPlaceholders(player, message);
-                }
-
-                Methods.sendMessage(player, message.replaceAll("%player%", player.getName()).replaceAll("%Player%", player.getName()).replaceAll("%reward%", quoteReplacement(prize.getDisplayItemBuilder().getName())), false);
-            }
-        } else {
-            plugin.getLogger().warning("No prize was found when giving " + player.getName() + " a prize.");
         }
+
+        // --- [重要] 設定ファイルから Count: true を取得するための準備 ---
+        FileConfiguration config = crate.getFile();
+        boolean shouldShowCount = config != null && config.getBoolean("Crate.Prizes." + prize.getName() + ".Count", false);
+
+        for (ItemBuilder item : prize.getItemBuilders()) {
+            ItemBuilder clone = new ItemBuilder(item);
+
+            if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled()) {
+                clone.setName(PlaceholderAPI.setPlaceholders(player, clone.getName()));
+                clone.setLore(PlaceholderAPI.setPlaceholders(player, clone.getLore()));
+            }
+
+            // アイテム名の %count% を置換
+            clone.setName(clone.getName().replace("%count%", prizeCount).replace("%Count%", prizeCount));
+
+            List<String> newLore = new ArrayList<>();
+            for (String line : clone.getLore()) {
+                newLore.add(line.replace("%count%", prizeCount).replace("%Count%", prizeCount));
+            }
+
+            // --- [追加] Count: true の場合、説明文の最後に回数を追加 ---
+            if (shouldShowCount) {
+                newLore.add(Methods.color("&c当たった回数: &e" + prizeCount + "回"));
+            }
+            clone.setLore(newLore);
+
+            if (!Methods.isInventoryFull(player)) {
+                player.getInventory().addItem(clone.build());
+            } else {
+                player.getWorld().dropItemNaturally(player.getLocation(), clone.build());
+            }
+        }
+
+        List<String> commands, messages;
+        if (prize.getSpecialPermission() != null && player.hasPermission(prize.getSpecialPermission())) {
+            commands = prize.getSpecialCommands();
+            messages = prize.getSpecialMessages();
+        } else {
+            commands = prize.getCommands();
+            messages = prize.getMessages();
+        }
+
+        for (String command : commands) {
+            // ... (ランダム数値処理は変更なし) ...
+            if (command.contains("%random%:")) {
+                String cmd = command;
+                StringBuilder commandBuilder = new StringBuilder();
+                for (String word : cmd.split(" ")) {
+                    if (word.startsWith("%random%:")) {
+                        word = word.replace("%random%:", "");
+                        try {
+                            long min = Long.parseLong(word.split("-")[0]);
+                            long max = Long.parseLong(word.split("-")[1]);
+                            commandBuilder.append(pickNumber(min, max)).append(" ");
+                        } catch (Exception e) {
+                            commandBuilder.append("1 ");
+                        }
+                    } else {
+                        commandBuilder.append(word).append(" ");
+                    }
+                }
+                command = commandBuilder.toString().trim();
+            }
+
+            if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled())
+                command = PlaceholderAPI.setPlaceholders(player, command);
+
+            // コマンド内の %count% を置換
+            command = command.replace("%count%", prizeCount).replace("%Count%", prizeCount);
+
+            Methods.sendCommand(command.replaceAll("%player%", player.getName()).replaceAll("%Player%", player.getName()).replaceAll("%reward%", quoteReplacement(prize.getDisplayItemBuilder().getUpdatedName())));
+        }
+
+        for (String message : messages) {
+            if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled()) {
+                message = PlaceholderAPI.setPlaceholders(player, message);
+            }
+
+            // メッセージ内の %count% を置換
+            message = message.replace("%count%", prizeCount).replace("%Count%", prizeCount);
+
+            Methods.sendMessage(player, message.replaceAll("%player%", player.getName()).replaceAll("%Player%", player.getName()).replaceAll("%reward%", quoteReplacement(prize.getDisplayItemBuilder().getName())), false);
+        }
+    } else {
+        plugin.getLogger().warning("No prize was found when giving " + player.getName() + " a prize.");
     }
+}
 
     /**
      * Give keys to an offline player.
@@ -1315,11 +1320,12 @@ public class CrazyManager {
         return new ItemBuilder().setMaterial(id).setName(name).setLore(lore).setGlow(glowing).build();
     }
 
-    private ItemBuilder getDisplayItem(FileConfiguration file, String prize) {
+    public ItemBuilder getDisplayItem(FileConfiguration file, String prize) {
         String path = "Crate.Prizes." + prize + ".";
         ItemBuilder itemBuilder = new ItemBuilder();
 
         try {
+            // MMOItemsなどの基本処理
             String mmoItem = file.getString(path + "MMOItem", null);
             if (mmoItem != null && mmoItem.contains(":")) {
                 String[] split = mmoItem.split(":", 2);
@@ -1329,8 +1335,34 @@ public class CrazyManager {
                         .setName(file.getString(path + "DisplayName"));
             }
 
+            // --- リアルタイム更新の核 ---
+            // 1. クレート名を取得
+            String crateName = file.getString("Crate.Name", file.getString("Crate.CrateName", "Unknown"));
+
+            // 2. 最新のカウントを取得
+            int count = CountsManager.getCount(crateName, prize);
+            String countString = String.valueOf(count);
+
+            // 3. 【重要】file.getStringList で毎回「設定ファイル」から直接読み込む
+            List<String> finalLore = new ArrayList<>();
+            List<String> rawLore = file.getStringList(path + "Lore");
+
+            if (rawLore != null) {
+                for (String line : rawLore) {
+                    // ここで %count% を数字に書き換える
+                    finalLore.add(Methods.color(line.replace("%count%", countString)
+                            .replace("%Count%", countString)));
+                }
+            }
+
+            // 4. Count: true 設定があれば自動追加
+            if (file.getBoolean(path + "Count", file.getBoolean(path + "count", false))) {
+                finalLore.add(Methods.color("&c当たった回数: &e" + countString + "回"));
+            }
+            // --------------------------
+
             itemBuilder.setAmount(file.getInt(path + "DisplayAmount", 1))
-                    .setLore(file.getStringList(path + "Lore"))
+                    .setLore(finalLore)
                     .setGlow(file.getBoolean(path + "Glowing"))
                     .setUnbreakable(file.getBoolean(path + "Unbreakable"))
                     .hideItemFlags(file.getBoolean(path + "HideItemFlags"))
@@ -1338,10 +1370,10 @@ public class CrazyManager {
                     .addPatterns(file.getStringList(path + "Patterns"))
                     .setPlayerName(file.getString(path + "Player"));
 
+            // エンチャント処理
             if (file.contains(path + "DisplayEnchantments")) {
                 for (String enchantmentName : file.getStringList(path + "DisplayEnchantments")) {
                     Enchantment enchantment = Methods.getEnchantment(enchantmentName.split(":")[0]);
-
                     if (enchantment != null) {
                         itemBuilder.addEnchantments(enchantment, Integer.parseInt(enchantmentName.split(":")[1]));
                     }
@@ -1350,13 +1382,7 @@ public class CrazyManager {
 
             return itemBuilder;
         } catch (Exception e) {
-            return new ItemBuilder().setMaterial(Material.RED_TERRACOTTA)
-                    .setName("&c&lERROR")
-                    .setLore(Arrays.asList(
-                            "&cThere is an error",
-                            "&cFor the reward: &c" + prize,
-                            "&e" + e
-                    ));
+            return new ItemBuilder().setMaterial(Material.RED_TERRACOTTA).setName("&c&lERROR");
         }
     }
 

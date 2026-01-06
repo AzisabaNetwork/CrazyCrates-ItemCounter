@@ -1,5 +1,5 @@
 name: CrazyCrates
-main: ${group}.CrazyCrates
+main: com.badbones69.crazycrates.CrazyCrates
 
 authors: [ BadBones69, RyderBelserion, MrXiaoM ]
 
@@ -9,6 +9,7 @@ description: ${description}
 website: ${website}
 
 softdepend: [ CMI, HolographicDisplays, DecentHolograms, PlaceholderAPI, ItemsAdder, MythicLib, MMOItems ]
+depend: [NBTAPI]
 
 commands:
   crates:

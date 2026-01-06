@@ -9,7 +9,7 @@ import com.badbones69.crazycrates.api.objects.ItemBuilder;
 import com.badbones69.crazycrates.api.objects.Prize;
 import com.badbones69.crazycrates.enums.Permissions;
 import com.badbones69.crazycrates.listeners.FireworkDamageListener;
-import de.tr7zw.changeme.nbtapi.NBTItem;
+import de.tr7zw.nbtapi.NBTItem;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;

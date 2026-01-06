@@ -10,7 +10,7 @@ import com.badbones69.crazycrates.api.objects.Prize;
 import com.badbones69.crazycrates.enums.types.KeyType;
 import com.badbones69.crazycrates.listeners.CrateControlListener;
 import com.badbones69.crazycrates.support.structures.blocks.ChestStateHandler;
-import de.tr7zw.changeme.nbtapi.NBTItem;
+import de.tr7zw.nbtapi.NBTItem;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;

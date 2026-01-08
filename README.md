@@ -1,3 +1,6 @@
+# CrazyCrates-ItemCounter
+A CrazyCrates fork that counts rewards per item (Minecraft 1.16.5)
+
 <br />
 
 ![crazycrates](https://git.crazycrew.us/ryderbelserion/Assets/raw/branch/main/crazycrew/webp/CrazyCratesBanner.webp)

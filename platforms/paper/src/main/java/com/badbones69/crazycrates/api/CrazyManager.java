@@ -27,6 +27,7 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
@@ -153,7 +154,7 @@ public class CrazyManager {
                             file.getString(path + ".Special.Permission", null),
                             file.getStringList(path + ".Special.Messages"),
                             file.getStringList(path + ".Special.Commands"),
-                            file.getBoolean(path + ".Count", false)));
+                            shouldShowPrizeCount(file, prize)));
                 }
 
                 int newPlayersKeys = file.getInt("Crate.StartingKeys");
@@ -696,9 +697,7 @@ public void givePrize(Player player, Prize prize, Crate crate) {
             }
         }
 
-        // --- [重要] 設定ファイルから Count: true を取得するための準備 ---
-        FileConfiguration config = crate.getFile();
-        boolean shouldShowCount = config != null && config.getBoolean("Crate.Prizes." + prize.getName() + ".Count", false);
+        boolean shouldShowCount = prize.useCount();
 
         for (ItemBuilder item : prize.getItemBuilders()) {
             ItemBuilder clone = new ItemBuilder(item);
@@ -708,16 +707,16 @@ public void givePrize(Player player, Prize prize, Crate crate) {
                 clone.setLore(PlaceholderAPI.setPlaceholders(player, clone.getLore()));
             }
 
-            // アイテム名の %count% を置換
-            clone.setName(clone.getName().replace("%count%", prizeCount).replace("%Count%", prizeCount));
+            clone.setName(replaceCountPlaceholder(clone.getName(), prizeCount));
 
             List<String> newLore = new ArrayList<>();
+            boolean hasCountPlaceholder = false;
             for (String line : clone.getLore()) {
-                newLore.add(line.replace("%count%", prizeCount).replace("%Count%", prizeCount));
+                hasCountPlaceholder |= hasCountPlaceholder(line);
+                newLore.add(replaceCountPlaceholder(line, prizeCount));
             }
 
-            // --- [追加] Count: true の場合、説明文の最後に回数を追加 ---
-            if (shouldShowCount) {
+            if (shouldShowCount && !hasCountPlaceholder) {
                 newLore.add(Methods.color("&c当たった回数: &e" + prizeCount + "回"));
             }
             clone.setLore(newLore);
@@ -763,8 +762,7 @@ public void givePrize(Player player, Prize prize, Crate crate) {
             if (PluginSupport.PLACEHOLDERAPI.isPluginEnabled())
                 command = PlaceholderAPI.setPlaceholders(player, command);
 
-            // コマンド内の %count% を置換
-            command = command.replace("%count%", prizeCount).replace("%Count%", prizeCount);
+            command = replaceCountPlaceholder(command, prizeCount);
 
             Methods.sendCommand(command.replaceAll("%player%", player.getName()).replaceAll("%Player%", player.getName()).replaceAll("%reward%", quoteReplacement(prize.getDisplayItemBuilder().getUpdatedName())));
         }
@@ -774,8 +772,7 @@ public void givePrize(Player player, Prize prize, Crate crate) {
                 message = PlaceholderAPI.setPlaceholders(player, message);
             }
 
-            // メッセージ内の %count% を置換
-            message = message.replace("%count%", prizeCount).replace("%Count%", prizeCount);
+            message = replaceCountPlaceholder(message, prizeCount);
 
             Methods.sendMessage(player, message.replaceAll("%player%", player.getName()).replaceAll("%Player%", player.getName()).replaceAll("%reward%", quoteReplacement(prize.getDisplayItemBuilder().getName())), false);
         }
@@ -1346,17 +1343,16 @@ public void givePrize(Player player, Prize prize, Crate crate) {
             // 3. 【重要】file.getStringList で毎回「設定ファイル」から直接読み込む
             List<String> finalLore = new ArrayList<>();
             List<String> rawLore = file.getStringList(path + "Lore");
+            boolean hasCountPlaceholder = false;
 
             if (rawLore != null) {
                 for (String line : rawLore) {
-                    // ここで %count% を数字に書き換える
-                    finalLore.add(Methods.color(line.replace("%count%", countString)
-                            .replace("%Count%", countString)));
+                    hasCountPlaceholder |= hasCountPlaceholder(line);
+                    finalLore.add(Methods.color(replaceCountPlaceholder(line, countString)));
                 }
             }
 
-            // 4. Count: true 設定があれば自動追加
-            if (file.getBoolean(path + "Count", file.getBoolean(path + "count", false))) {
+            if (shouldShowPrizeCount(file, prize) && !hasCountPlaceholder) {
                 finalLore.add(Methods.color("&c当たった回数: &e" + countString + "回"));
             }
             // --------------------------
@@ -1388,6 +1384,40 @@ public void givePrize(Player player, Prize prize, Crate crate) {
 
     private List<ItemBuilder> getItems(FileConfiguration file, String prize) {
         return ItemBuilder.convertStringList(file.getStringList("Crate.Prizes." + prize + ".Items"), prize);
+    }
+
+    private boolean shouldShowPrizeCount(FileConfiguration file, String prize) {
+        if (file == null) return false;
+
+        ConfigurationSection crateSection = file.getConfigurationSection("Crate");
+        boolean allCount = getBooleanIgnoreCase(crateSection, "AllCount", false);
+        ConfigurationSection prizeSection = file.getConfigurationSection("Crate.Prizes." + prize);
+        return getBooleanIgnoreCase(prizeSection, "Count", allCount);
+    }
+
+    private boolean getBooleanIgnoreCase(ConfigurationSection section, String key, boolean defaultValue) {
+        if (section == null) return defaultValue;
+
+        for (String configuredKey : section.getKeys(false)) {
+            if (configuredKey.equalsIgnoreCase(key)) {
+                return section.getBoolean(configuredKey, defaultValue);
+            }
+        }
+        return defaultValue;
+    }
+
+    private boolean hasCountPlaceholder(String value) {
+        if (value == null) return false;
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.contains("#count#") || normalized.contains("%count%");
+    }
+
+    private String replaceCountPlaceholder(String value, String count) {
+        if (value == null) return "";
+        return value.replace("#count#", count)
+                .replace("#Count#", count)
+                .replace("%count%", count)
+                .replace("%Count%", count);
     }
 
     public long pickNumber(long min, long max) {

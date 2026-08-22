@@ -70,8 +70,10 @@ public class CountsManager {
         List<String> newLore = new ArrayList<>();
 
         for (String line : lore) {
-            // %count% または %Count% を置換
-            newLore.add(line.replace("%count%", countValue).replace("%Count%", countValue));
+            newLore.add(line.replace("#count#", countValue)
+                    .replace("#Count#", countValue)
+                    .replace("%count%", countValue)
+                    .replace("%Count%", countValue));
         }
         return newLore;
     }

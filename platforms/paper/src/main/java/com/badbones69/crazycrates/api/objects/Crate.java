@@ -21,6 +21,7 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class Crate {
@@ -58,6 +59,7 @@ public class Crate {
     private boolean unique;
     private Map<Integer, Integer> uniquePrice;
     private Map<Integer, Map<String, Integer>> chanceByTimes;
+    private final boolean trueChance;
     /**
      * @param name      The name of the crate.
      * @param crateType The crate type of the crate.
@@ -76,6 +78,7 @@ public class Crate {
                 .setCrateName(name).build();
         this.file = file;
         this.name = name;
+        this.trueChance = getBooleanIgnoreCase(file != null ? file.getConfigurationSection("Crate") : null, "TrueChance", false);
         this.tiers = tiers != null ? tiers : new ArrayList<>();
         this.maxMassOpen = maxMassOpen;
         this.prizes = prizes;
@@ -262,7 +265,6 @@ public class Crate {
      * @return The winning prize.
      */
     public Prize pickPrize(Player player) {
-        ArrayList<Prize> prizes = new ArrayList<>();
         ArrayList<Prize> usablePrizes = new ArrayList<>();
 
         // ================= Blacklist Check ================= //
@@ -283,7 +285,9 @@ public class Crate {
             usablePrizes.removeIf(it -> bannedPrizes.contains(it.getName()));
         }
 
-        // ================= Chance Check ================= //
+        if (trueChance) return pickPrizeByWeight(usablePrizes);
+
+        ArrayList<Prize> prizes = new ArrayList<>();
         chanceCheck(prizes, usablePrizes);
 
         try {
@@ -319,6 +323,37 @@ public class Crate {
         }
     }
 
+    private Prize pickPrizeByWeight(List<Prize> usablePrizes) {
+        int openTimes = getOpenedTimes() + 1;
+        double totalWeight = 0;
+
+        for (Prize prize : usablePrizes) {
+            totalWeight += getWeight(prize, openTimes);
+        }
+
+        if (totalWeight <= 0) return null;
+
+        double selectedWeight = ThreadLocalRandom.current().nextDouble(totalWeight);
+        Prize lastPrize = null;
+        for (Prize prize : usablePrizes) {
+            double weight = getWeight(prize, openTimes);
+            if (weight <= 0) continue;
+
+            lastPrize = prize;
+            selectedWeight -= weight;
+            if (selectedWeight < 0) return prize;
+        }
+
+        return lastPrize;
+    }
+
+    private double getWeight(Prize prize, int openTimes) {
+        int maxRange = prize.getMaxRange();
+        int chance = getChance(prize, openTimes);
+        if (maxRange <= 0 || chance <= 0) return 0;
+        return (double) chance / maxRange;
+    }
+
     /**
      * Picks a random prize based on BlackList Permissions and the Chance System. Only used in the Cosmic Crate Type since it is the only one with tiers.
      *
@@ -327,7 +362,6 @@ public class Crate {
      * @return The winning prize based on the crate's tiers.
      */
     public Prize pickPrize(Player player, Tier tier) {
-        ArrayList<Prize> prizes = new ArrayList<>();
         ArrayList<Prize> usablePrizes = new ArrayList<>();
 
         // ================= Blacklist Check ================= //
@@ -345,7 +379,9 @@ public class Crate {
             }
         }
 
-        // ================= Chance Check ================= //
+        if (trueChance) return pickPrizeByWeight(usablePrizes);
+
+        ArrayList<Prize> prizes = new ArrayList<>();
         chanceCheck(prizes, usablePrizes);
 
         return prizes.get(new Random().nextInt(prizes.size()));
@@ -679,6 +715,10 @@ public class Crate {
         return tiers;
     }
 
+    public boolean usesTrueChance() {
+        return trueChance;
+    }
+
     /**
      * @return Returns the max amount that players can specify for crate mass open.
      */
@@ -724,7 +764,9 @@ public class Crate {
                 int currentCount = com.badbones69.crazycrates.api.CountsManager.getCount(this.name, prize.getName());
 
                 for (String line : meta.getLore()) {
-                    newLore.add(line.replace("%count%", String.valueOf(currentCount))
+                    newLore.add(line.replace("#count#", String.valueOf(currentCount))
+                            .replace("#Count#", String.valueOf(currentCount))
+                            .replace("%count%", String.valueOf(currentCount))
                             .replace("%Count%", String.valueOf(currentCount)));
                 }
                 meta.setLore(newLore);
@@ -736,6 +778,17 @@ public class Crate {
         }
 
         return items;
+    }
+
+    private static boolean getBooleanIgnoreCase(ConfigurationSection section, String key, boolean defaultValue) {
+        if (section == null) return defaultValue;
+
+        for (String configuredKey : section.getKeys(false)) {
+            if (configuredKey.equalsIgnoreCase(key)) {
+                return section.getBoolean(configuredKey, defaultValue);
+            }
+        }
+        return defaultValue;
     }
 
     //オーバーロード

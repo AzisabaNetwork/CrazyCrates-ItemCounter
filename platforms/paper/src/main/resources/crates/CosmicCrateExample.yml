@@ -1,4 +1,6 @@
 Crate:
+  AllCount: false
+  TrueChance: false
   CrateType: Cosmic
   CrateName: '&dCosmic Crate'
   Preview-Name: '&dCosmic Crate Preview'

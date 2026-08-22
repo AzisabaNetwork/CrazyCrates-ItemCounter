@@ -26,6 +26,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Cosmic implements Listener {
 
@@ -76,6 +77,28 @@ public class Cosmic implements Listener {
         Crate crate = crazyManager.getOpeningCrate(player);
 
         if (crate.getTiers() != null && !crate.getTiers().isEmpty()) {
+            if (crate.usesTrueChance()) {
+                double totalWeight = 0;
+                for (Tier tier : crate.getTiers()) {
+                    if (tier.getChance() > 0 && tier.getMaxRange() > 0) {
+                        totalWeight += (double) tier.getChance() / tier.getMaxRange();
+                    }
+                }
+
+                if (totalWeight <= 0) return null;
+
+                double selectedWeight = ThreadLocalRandom.current().nextDouble(totalWeight);
+                Tier lastTier = null;
+                for (Tier tier : crate.getTiers()) {
+                    if (tier.getChance() <= 0 || tier.getMaxRange() <= 0) continue;
+
+                    lastTier = tier;
+                    selectedWeight -= (double) tier.getChance() / tier.getMaxRange();
+                    if (selectedWeight < 0) return tier;
+                }
+                return lastTier;
+            }
+
             for (int stopLoop = 0; stopLoop <= 100; stopLoop++) {
                 for (Tier tier : crate.getTiers()) {
                     int chance = tier.getChance();

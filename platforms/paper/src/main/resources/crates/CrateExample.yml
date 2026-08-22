@@ -1,6 +1,12 @@
 Crate:
   # Type of crate -> CSGO/QuickCrate/Roulette/CrateOnTheGo/FireCracker/Wonder/Wheel/War
 
+  # Set true to show the accumulated win count on every prize by default.
+  # A prize can override this with Count: false. A #count# in its Lore takes priority over the automatic line.
+  AllCount: false
+  # Set true to use a single weighted draw based on each prize's Chance / MaxRange values.
+  TrueChance: false
+
   # Make sure to check out the wiki for anything not explained here.
   # https://github.com/Crazy-Crew/Crazy-Crates/wiki
 

@@ -1,7 +1,6 @@
 import java.util.Locale
 plugins {
     `java-library`
-    id("com.github.hierynomus.license")
     id("com.gradleup.shadow")
 }
 
@@ -30,13 +29,4 @@ tasks {
         sourceCompatibility = "17"
         targetCompatibility = "17"
     }
-}
-
-license {
-    header = rootProject.file("LICENSE")
-    encoding = "UTF-8"
-
-    mapping("java", "JAVADOC_STYLE")
-
-    include("**/*.java")
 }

@@ -33,12 +33,20 @@ dependencies {
     shadow("net.kyori:adventure-api:4.14.0")
 }
 tasks {
+    jar {
+        enabled = false
+    }
+
     shadowJar {
         archiveFileName.set("CrazyCrates-Paper.jar")
         configurations = listOf(project.configurations.getByName("shadow"))
 
         // 以前のリロケートが残っているとマズいので一旦無効、または最小限に
         mergeServiceFiles()
+    }
+
+    assemble {
+        dependsOn(shadowJar)
     }
 
     processResources {

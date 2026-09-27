@@ -1,8 +1,8 @@
 [versions]
 
-paper = "1.20.4-R0.1-SNAPSHOT"
+paper = "1.21.11-R0.1-SNAPSHOT"
 kyori = "4.21.0"
-nbt_api = "2.15.0"
+nbt_api = "2.16.0"
 
 [libraries]
 
@@ -14,7 +14,7 @@ kyori = { module = "net.kyori:adventure-api", version.ref = "kyori" }
 kyori-mm = { module = "net.kyori:adventure-text-minimessage", version.ref = "kyori" }
 
 # Misc
-nbt_api = { module = "de.tr7zw:item-nbt-api", version.ref = "nbt_api" }
+nbt_api = { module = "de.tr7zw:item-nbt-api-plugin", version.ref = "nbt_api" }
 
 # Holograms
 holographic_displays = { module = "me.filoghost.holographicdisplays:holographicdisplays-api", version = "3.0.1" }

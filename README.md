@@ -1,5 +1,5 @@
 # CrazyCrates-ItemCounter
-A CrazyCrates fork that counts rewards per item (Minecraft 1.16.5)
+A CrazyCrates fork that counts rewards per item (Minecraft 1.21.11)
 
 <br />
 
@@ -26,8 +26,11 @@ A CrazyCrates fork that counts rewards per item (Minecraft 1.16.5)
 
 ## Fork
 
-Native Minecraft Version: `1.16.5`  
-We do **NOT** prove it works on older or newer version. It builds with Java 8. I think that it may works.
+Native Minecraft Version: `1.21.11`
+Required Java Version: `21`
+Required NBT-API Version: `2.15.5+` (`2.16.0` recommended)
+
+This fork targets Paper 1.21.11. Older and newer server versions are not supported unless explicitly tested.
 
 **Changes:**
 * Removed QuadCrate because I am lazy to adapt struct between 1.19 and 1.16.

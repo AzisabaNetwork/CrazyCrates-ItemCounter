@@ -18,7 +18,6 @@ import org.bukkit.command.RemoteConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -145,7 +144,7 @@ public class Methods {
     }
 
     public static void firework(Location loc, Color color) {
-        final Firework fw = (Firework) loc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
+        final Firework fw = loc.getWorld().spawn(loc, Firework.class);
         FireworkMeta fm = fw.getFireworkMeta();
         fm.addEffects(FireworkEffect.builder().with(FireworkEffect.Type.BALL).withColor(color).withColor(color).trail(false).flicker(false).build());
         fm.setPower(0);

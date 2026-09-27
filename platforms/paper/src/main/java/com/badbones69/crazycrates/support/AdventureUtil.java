@@ -21,7 +21,7 @@ public class AdventureUtil {
     }
 
     /**
-     * Componentを要求された場合、空のものを返す（1.16.5では使用しないため）
+     * Componentを要求された場合、空のものを返す（現状はLegacy文字列を使用するため）
      */
     @NotNull
     public static Component miniMessage(String s) {

@@ -27,7 +27,7 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(17)) // 最近のPaperなら17以上推奨、1.8なら8のまま
+            languageVersion.set(JavaLanguageVersion.of(21))
         }
     }
 }

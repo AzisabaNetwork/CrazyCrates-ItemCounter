@@ -4,7 +4,7 @@ main: com.badbones69.crazycrates.CrazyCrates
 authors: [ BadBones69, RyderBelserion, MrXiaoM ]
 
 version: ${version}
-api-version: '1.13'
+api-version: '1.21.11'
 description: ${description}
 website: ${website}
 

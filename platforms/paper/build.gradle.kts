@@ -21,16 +21,18 @@ repositories {
 dependencies {
     shadow(project(":crazycrates-api"))
     compileOnly(libs.papermc)
+    compileOnly(libs.nbt.api)
 
     // 重要：フォルダ内のJARを強制的に読み込む
     // 'libs' は build.gradle.kts と同じ階層にある前提です
-    compileOnly(fileTree("libs") { include("*.jar") })
+    compileOnly(fileTree("libs") {
+        include("*.jar")
+        exclude("item-nbt-api-plugin-*.jar")
+    })
 
     // 万が一上の行でダメな場合のために、一階層上も見に行く設定
     compileOnly(fileTree("../../libs") { include("*.jar") })
 
-    // 1.16.5用のAdventure
-    shadow("net.kyori:adventure-api:4.14.0")
 }
 tasks {
     jar {

@@ -19,7 +19,6 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.*;
-import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
@@ -384,7 +383,7 @@ public class ItemBuilder {
             item.setAmount(itemAmount);
             ItemMeta itemMeta = item.getItemMeta();
             if (mmoType == null && mmoId == null) {
-                // 文字列を直接セット (1.16.5 方式)
+                // 既存設定との互換性を維持するためLegacy文字列を直接セット
                 itemMeta.setDisplayName(AdventureUtil.replaceLegacy(getUpdatedName()));
                 itemMeta.setLore(AdventureUtil.parseLore(getUpdatedLore()));
             }
@@ -395,14 +394,14 @@ public class ItemBuilder {
             if (isPotion && (potionType != null || potionColor != null)) {
                 PotionMeta potionMeta = (PotionMeta) itemMeta;
 
-                if (potionType != null) potionMeta.setBasePotionData(new PotionData(potionType));
+                if (potionType != null) potionMeta.setBasePotionType(potionType);
 
                 if (potionColor != null) potionMeta.setColor(potionColor);
             }
 
             if (material == Material.TIPPED_ARROW && potionType != null) {
                 PotionMeta potionMeta = (PotionMeta) itemMeta;
-                potionMeta.setBasePotionData(new PotionData(potionType));
+                potionMeta.setBasePotionType(potionType);
             }
 
             if (isLeatherArmor && armorColor != null) {
@@ -1070,7 +1069,7 @@ public class ItemBuilder {
                         if (item.getItemMeta().hasEnchants()) return;
                     }
 
-                    item.addUnsafeEnchantment(Enchantment.LUCK, 1);
+                    item.addUnsafeEnchantment(Enchantment.LUCK_OF_THE_SEA, 1);
                     ItemMeta meta = item.getItemMeta();
                     meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
                     item.setItemMeta(meta);
@@ -1087,39 +1086,7 @@ public class ItemBuilder {
      * @return The potion type.
      */
     private PotionType getPotionType(PotionEffectType type) {
-        if (type != null) {
-            if (type.equals(PotionEffectType.FIRE_RESISTANCE)) {
-                return PotionType.FIRE_RESISTANCE;
-            } else if (type.equals(PotionEffectType.HARM)) {
-                return PotionType.INSTANT_DAMAGE;
-            } else if (type.equals(PotionEffectType.HEAL)) {
-                return PotionType.INSTANT_HEAL;
-            } else if (type.equals(PotionEffectType.INVISIBILITY)) {
-                return PotionType.INVISIBILITY;
-            } else if (type.equals(PotionEffectType.JUMP)) {
-                return PotionType.JUMP;
-            } else if (type.equals(PotionEffectType.getByName("LUCK"))) {
-                return PotionType.valueOf("LUCK");
-            } else if (type.equals(PotionEffectType.NIGHT_VISION)) {
-                return PotionType.NIGHT_VISION;
-            } else if (type.equals(PotionEffectType.POISON)) {
-                return PotionType.POISON;
-            } else if (type.equals(PotionEffectType.REGENERATION)) {
-                return PotionType.REGEN;
-            } else if (type.equals(PotionEffectType.SLOW)) {
-                return PotionType.SLOWNESS;
-            } else if (type.equals(PotionEffectType.SPEED)) {
-                return PotionType.SPEED;
-            } else if (type.equals(PotionEffectType.INCREASE_DAMAGE)) {
-                return PotionType.STRENGTH;
-            } else if (type.equals(PotionEffectType.WATER_BREATHING)) {
-                return PotionType.WATER_BREATHING;
-            } else if (type.equals(PotionEffectType.WEAKNESS)) {
-                return PotionType.WEAKNESS;
-            }
-        }
-
-        return null;
+        return type == null ? null : PotionType.getByEffect(type);
     }
 
     /**
